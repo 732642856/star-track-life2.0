@@ -419,36 +419,28 @@ const RichZiweiWordLibrary = (function() {
      * @param {Object} chartData - 命盘数据 {mainStar, sihuaType, patternType, era}
      * @returns {Object} 八大维度的词汇数组
      */
+    /**
+     * 生成8维度基础词汇（仅返回主星原始词汇，不叠加修饰器）
+     * 
+     * 【修改说明 2026-04-03】
+     * 之前 triple-modifier 链（SIHUA→格局→时代）全部在生成阶段叠加，
+     * 导致每个选项变成「眼神锐利有神慑人心，充满着保守心态，似近代绅士」
+     * 这样超长的句子，用户无法快速选词。
+     * 
+     * 现在：只返回主星基础词（2~4字核心描述），
+     * 时代/格局修饰只在最终输出「命盘印证」部分应用。
+     * 
+     * 使用方式：
+     *   const words = RichZiweiWordLibrary.generateEightAttrOptions(chartData, 'appearance', 8);
+     */
     function generateAllDimensionsVocabulary(chartData) {
-        const { mainStar = '紫微', sihuaType = '化禄型', patternType = '杀破狼', era = 'contemporary' } = chartData;
-        
-        // 获取基础词汇
+        const { mainStar = '紫微' } = chartData || {};
         const baseVocab = STAR_BASE_VOCAB[mainStar] || STAR_BASE_VOCAB['紫微'];
-        
         const result = {};
-        
         EIGHT_DIMENSIONS.forEach(dimension => {
-            let words = [...(baseVocab[dimension] || [])];
-            
-            // 应用四化增强
-            if (SIHUA_ENHANCERS[sihuaType]) {
-                words = SIHUA_ENHANCERS[sihuaType].modifier(words);
-            }
-            
-            // 应用格局修饰
-            if (PATTERN_MODIFIERS[patternType]) {
-                words = PATTERN_MODIFIERS[patternType].modifier(words);
-            }
-            
-            // 应用时代适配
-            if (ERA_ADAPTERS[era]) {
-                words = ERA_ADAPTERS[era].adapter(words);
-            }
-            
-            // 随机选择15个词汇返回
-            result[dimension] = shuffleArray(words).slice(0, 15);
+            // 只取主星基础词，随机选15条，不叠加任何修饰器
+            result[dimension] = shuffleArray([...(baseVocab[dimension] || [])]).slice(0, 15);
         });
-        
         return result;
     }
     
