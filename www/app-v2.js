@@ -755,89 +755,20 @@ function initEightAttributes() {
     var dimNames = DIM_NAMES[langKey] || DIM_NAMES.zh;
     var attributeDefs = DIM_IDS.map(function(id, i) { return { id: id, name: dimNames[i] }; });
     
-    // ── ★ 紫微斗数丰富动态词库：根据命盘生成丰富选项 ────────────────────────────
-    let dynamicOptions = {};
-    try {
-        if (selectedChart) {
-            // 提取命盘数据
-            const chartData = {
-                mainStar: selectedChart.mainStar || '紫微',
-                sihuaType: selectedChart.sihuaType || '化禄型',
-                patternType: selectedChart.patternType || '杀破狼',
-                era: selectedEra || 'contemporary'
-            };
-            
-            // 优先使用丰富词库系统
-            let allVocab = {};
-            if (window.RichZiweiWordLibrary && typeof window.RichZiweiWordLibrary.generateAllDimensionsVocabulary === 'function') {
-                allVocab = window.RichZiweiWordLibrary.generateAllDimensionsVocabulary(chartData);
-                console.log('[initEightAttributes] 丰富词库已生成（包含数千词汇）:', allVocab);
-                
-                // 显示统计信息
-                const stats = window.RichZiweiWordLibrary.getStats();
-                console.log('[initEightAttributes] 词库统计:', stats);
-            }
-            // 降级到原始词库
-            else if (window.ZiweiWordLibrary && typeof window.ZiweiWordLibrary.generateAllDimensionsVocabulary === 'function') {
-                allVocab = window.ZiweiWordLibrary.generateAllDimensionsVocabulary(chartData);
-                console.log('[initEightAttributes] 动态词库已生成:', allVocab);
-            }
-            // 降级到增强词库
-            else if (window.WritingLibraryEnhancer && typeof window.WritingLibraryEnhancer.getCombinedVocabulary === 'function') {
-                const dimensions = ['appearance', 'speech', 'behavior', 'emotion', 'social', 'crisis', 'learning', 'growth'];
-                dimensions.forEach(dimension => {
-                    const words = window.WritingLibraryEnhancer.getCombinedVocabulary(chartData, dimension, 8);
-                    allVocab[dimension] = words;
-                });
-                console.log('[initEightAttributes] 增强词库已生成:', allVocab);
-            }
-            
-            // 转换格式
-            attributeDefs.forEach(attr => {
-                if (allVocab[attr.id] && allVocab[attr.id].length > 0) {
-                    dynamicOptions[attr.id] = allVocab[attr.id];
-                }
-            });
-        }
-    } catch (e) {
-        console.warn('[initEightAttributes] 词库生成出错:', e);
-    }
+    // ── 动态词库生成（用于 Step 5 输出，不进 Step 4 选项列表）─────────────
+    // RichZiweiWordLibrary.generateAllDimensionsVocabulary() 已在 UI 层修复为返回短词
+    // 此处代码保留仅为 Step 5 输出的参考数据，无实际渲染影响
+    // try {
+    //     if (selectedChart) { /* ... */ }
+    // } catch (e) {}
     
-    // ── 构建 Step 4 选项列表 ────────────────────────────────
-    // 核心原则：Step 4 用户选词 → 四字短词（FALLBACK_OPTIONS），有区分度易选择
-    //             Step 5 输出用 → RichZiweiWordLibrary（50条长词+三层修饰，专业输出）
-    // 优先级：FALLBACK_OPTIONS（四字短词）> i18n数据 > 硬编码兜底
-    const attributes = attributeDefs.map(attr => {
-        const currentLang = (typeof CURRENT_LANG !== 'undefined') ? CURRENT_LANG : 'zh';
-
-        // 1. 简体中文/繁体/英文：统一用 FALLBACK_OPTIONS 四字词（6条，区分度好）
-        const fallbackOpts = getFallbackOptions(attr.id);
-        if (fallbackOpts && fallbackOpts.length > 0) {
-            return {
-                id: attr.id,
-                name: attr.name,
-                options: fallbackOpts.slice(0, 6)
-            };
-        }
-
-        // 2. i18n 数据兜底
-        if (dyn && dyn.attr) {
-            const dynAttr = dyn.attr.find(a => a.id === attr.id);
-            if (dynAttr && dynAttr.options && dynAttr.options.length > 0) {
-                return {
-                    id: attr.id,
-                    name: attr.name,
-                    options: dynAttr.options.slice(0, 6)
-                };
-            }
-        }
-
-        // 3. 硬编码（最后防线）
-        return {
-            id: attr.id,
-            name: attr.name,
-            options: []
-        };
+    // ── Step 4 选项列表：只用 FALLBACK_OPTIONS 四字短词 ───────────────
+    // 核心：让用户看到短词（6选1），长词/精准词库只进 Step 5 命盘印证输出
+    var _faLang = (typeof CURRENT_LANG !== 'undefined' && CURRENT_LANG ? CURRENT_LANG :
+                   (typeof window !== 'undefined' && window.CURRENT_LANG ? window.CURRENT_LANG : 'zh'));
+    var _faOpts = FALLBACK_OPTIONS[_faLang] || FALLBACK_OPTIONS.zh;
+    var attributes = DIM_IDS.map(function(id, i) {
+        return { id: id, name: dimNames[i], options: (_faOpts[id] || []).slice(0, 6) };
     });
 
     // ── ★ 命盘算法驱动：获取8属性命盘推荐 ────────────────────────────
