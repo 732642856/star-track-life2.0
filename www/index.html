@@ -27,24 +27,15 @@
         align-items: center;
         z-index: 10000;
         font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "SF Pro Display", "Helvetica Neue", sans-serif;
-        opacity: 0;
-        /* 不用 animation，由 JS 控制 */
     }
     #lang-picker-screen.lp-visible {
         display: flex;
-        animation: lpFadeIn 0.55s cubic-bezier(0.16,1,0.3,1) forwards;
-    }
-    @keyframes lpFadeIn {
-        from { opacity: 0; transform: scale(1.03); }
-        to   { opacity: 1; transform: scale(1); }
+        opacity: 1;
     }
     #lang-picker-screen.fade-out {
-        animation: lpFadeOut 0.38s ease forwards;
+        opacity: 0;
         pointer-events: none;
-    }
-    @keyframes lpFadeOut {
-        from { opacity: 1; transform: scale(1); }
-        to   { opacity: 0; transform: scale(0.97); }
+        transition: opacity 0.3s ease;
     }
     .lp-logo {
         font-size: 30px;
@@ -319,7 +310,57 @@
 
             /** 显示磨砂玻璃语言选择页 */
             function showLangPicker() {
-                langPicker.classList.add('lp-visible');
+                console.log('[lang-picker] showing...');
+                langPicker.style.cssText = `
+                    position: fixed;
+                    top: 0; left: 0;
+                    width: 100vw; height: 100dvh;
+                    z-index: 99999;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    align-items: center;
+                    background: linear-gradient(135deg, #f5f0eb 0%, #fff 100%);
+                    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+                    padding-top: env(safe-area-inset-top, 0px);
+                    padding-bottom: env(safe-area-inset-bottom, 0px);
+                `;
+                // 添加内容
+                langPicker.innerHTML = `
+                    <div style="font-size:32px;font-weight:300;letter-spacing:12px;color:#1a1a1a;margin-bottom:8px;">星轨人生</div>
+                    <div style="width:40px;height:1px;background:linear-gradient(90deg,transparent,#8B1010,transparent);margin:20px 0;"></div>
+                    <p style="font-size:13px;letter-spacing:3px;color:#666;margin-bottom:30px;">SELECT YOUR LANGUAGE</p>
+                    <div style="display:flex;gap:16px;">
+                        <button onclick="pickLang('zh')" style="
+                            padding: 14px 32px;
+                            font-size: 16px;
+                            border: 1px solid #ddd;
+                            border-radius: 8px;
+                            background: #fff;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        " onmouseover="this.style.background='#f5f0eb';this.style.borderColor='#8B1010';" onmouseout="this.style.background='#fff';this.style.borderColor='#ddd';">简体中文</button>
+                        <button onclick="pickLang('zh-TW')" style="
+                            padding: 14px 32px;
+                            font-size: 16px;
+                            border: 1px solid #ddd;
+                            border-radius: 8px;
+                            background: #fff;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        " onmouseover="this.style.background='#f5f0eb';this.style.borderColor='#8B1010';" onmouseout="this.style.background='#fff';this.style.borderColor='#ddd';">繁體中文</button>
+                        <button onclick="pickLang('en')" style="
+                            padding: 14px 32px;
+                            font-size: 16px;
+                            border: 1px solid #ddd;
+                            border-radius: 8px;
+                            background: #fff;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        " onmouseover="this.style.background='#f5f0eb';this.style.borderColor='#8B1010';" onmouseout="this.style.background='#fff';this.style.borderColor='#ddd';">English</button>
+                    </div>
+                    <p style="position:absolute;bottom:40px;font-size:11px;letter-spacing:4px;color:#999;">STAR TRACK LIFE</p>
+                `;
             }
 
             /** 用户点击语言按钮后调用 */
@@ -353,21 +394,19 @@
                 }
             });
 
-            // 首次进入：splash 播完后显示语言选择
-            // 再次进入：直接进入主界面（跳过语言选择）
+            // 首次进入：直接显示语言选择（跳过splash）
+            // 再次进入：splash后直接进入主界面
             var hasPicked = localStorage.getItem(LANG_PICKED_KEY);
+            console.log('[lang-picker] hasPicked:', hasPicked, 'LANG_KEY:', localStorage.getItem(LANG_KEY));
             if (hasPicked) {
-                // 再次进入 → 直接进入主界面（无需语言选择）
+                // 再次进入 → splash后直接进入主界面
                 langPicker.style.display = 'none';
                 runSplash(function() {
                     // 直接进入，不显示语言选择
                 });
             } else {
-                // 首次进入 → splash 播完后弹出语言选择
-                langPicker.style.display = 'none';
-                runSplash(function() {
-                    showLangPicker();
-                });
+                // 首次进入 → 直接显示语言选择（跳过splash）
+                showLangPicker();
             }
         })();
     </script>
@@ -883,6 +922,10 @@
      * @param {'zh'|'zh-TW'|'en'} lang
      */
     function switchLang(lang) {
+        // 保存语言选择
+        localStorage.setItem('star_track_lang', lang);
+        localStorage.setItem('star_track_lang_picked', '1');
+        
         if (typeof setLanguage === 'function') setLanguage(lang);
 
         // 更新按钮高亮

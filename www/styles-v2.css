@@ -1628,7 +1628,7 @@ body {
 /* 右上角浮动关闭按钮（iOS 悬浮圆形风格） */
 .cmp-close-fab {
     position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + 60px);
+    top: calc(env(safe-area-inset-top, 0px) + 16px);
     right: 16px;
     z-index: 9100;
     width: 36px;
@@ -2092,33 +2092,32 @@ body {
 }
 
 .attribute-group {
-    margin-bottom: var(--space-8, 32px);
-    padding: var(--space-6, 24px);
+    margin-bottom: var(--space-6, 24px);
+    padding: var(--space-5, 20px);
     background: var(--color-bg-secondary, #FAFAFA);
     border-radius: var(--radius-lg, 12px);
     border: 1px solid var(--color-border-light, #F0F0F0);
 }
 
 .attribute-label {
-    font-size: var(--text-lg, 18px);
+    font-size: var(--text-base, 16px);
     font-weight: 600;
     color: var(--color-text, #1A1A1A);
-    margin-bottom: var(--space-4, 16px);
+    margin-bottom: var(--space-3, 12px);
     letter-spacing: -0.01em;
 }
 
 .attribute-options {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-3, 12px);
-    justify-content: flex-start;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-2, 8px);
 }
 
 .attribute-option {
-    padding: var(--space-3, 12px) var(--space-5, 20px);
+    padding: var(--space-2, 8px) var(--space-3, 12px);
     border: 1.5px solid var(--color-border, #E0E0E0);
-    border-radius: var(--radius-lg, 12px);
-    font-size: var(--text-base, 16px);
+    border-radius: var(--radius-md, 8px);
+    font-size: var(--text-sm, 14px);
     font-weight: 500;
     color: var(--color-text-secondary, #4A4A4A);
     cursor: pointer;
@@ -2126,6 +2125,8 @@ body {
     background: var(--color-bg, #FFFFFF);
     user-select: none;
     -webkit-tap-highlight-color: transparent;
+    text-align: center;
+    justify-self: stretch;
 }
 
 .attribute-option:hover {
@@ -2173,6 +2174,11 @@ body {
 
 /* ==================== iOS 移动端适配 ==================== */
 @media (max-width: 1024px) {
+    /* 隐藏左上角 logo（刘海遮挡） */
+    .logo {
+        display: none !important;
+    }
+    
     /* 根字号适当放大，让 rem 单位在小屏更清晰 */
     html {
         font-size: 15px;

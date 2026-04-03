@@ -20,3 +20,7 @@ dist/
 *.mobileprovision
 .env
 *.log
+
+# 备份和构建目录
+.backup-custom/
+*.asar
