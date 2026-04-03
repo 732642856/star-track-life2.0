@@ -671,14 +671,17 @@ function generate8PersonalityTypes(chartData) {
 }
 
 /** 把排盘结果包装为selectedChart格式（兼容旧UI字段） */
+// buildChartProxy：兼容 chart-to-bio-bridge.js 的命盘数据格式
+// selectedChart.name 不再从 pattern.name 读取（pattern.name 是对象会导致 [object Object]）
+// chart.name 在 generateZiweiCharacterBio 中从 userData.name（表单输入）读取
 function buildChartProxy(chartData) {
     return {
         ...chartData,
-        name: chartData.pattern.name,
-        stars: chartData.pattern.stars,
-        desc: chartData.pattern.desc,
-        type: chartData.patternType,
-        chartId: chartData.chartUid || chartData.chartId,
+        // name: chartData.name || '',  // 移除，表单name从 userInputs 传入，不从命盘读取
+        stars: (chartData.pattern && Array.isArray(chartData.pattern.stars)) ? chartData.pattern.stars : (chartData.stars || []),
+        desc: (chartData.pattern && typeof chartData.pattern.desc === 'string') ? chartData.pattern.desc : (chartData.desc || ''),
+        type: chartData.patternType || chartData.type || '',
+        chartId: chartData.chartUid || chartData.chartId || '',
         _fullChart: chartData,
     };
 }

@@ -3808,7 +3808,7 @@ function generateZiweiCharacterBio(userData, chart, attributes, sihuaType) {
     // PERSONALITY_8_TYPES 里有更丰富的子类型描述（visibleTrait / hiddenNeed / lifePattern）
     var p8type = _getPersonalityType(sihuaType) || null;
 
-    var name        = userData.name || (_lang === 'en' ? 'Character' : _lang === 'zh-TW' ? '角色' : '角色');
+    var name        = (userData.name && userData.name.trim()) || (_lang === 'en' ? 'Character' : _lang === 'zh-TW' ? '角色' : '角色');
     var genderRaw   = userData.gender || 'male';
     var isFemale    = (genderRaw === 'female' || genderRaw === '女');
     var genderCN    = isFemale ? T.genderF : T.genderM;
@@ -3949,7 +3949,21 @@ function generateZiweiCharacterBio(userData, chart, attributes, sihuaType) {
     var chartTag;
     if (_lang === 'en') {
         var _starNameEN = (window.MAIN_STARS_I18N && window.MAIN_STARS_I18N[mainStar] && window.MAIN_STARS_I18N[mainStar].en) || mainStar;
-        var _sihuaEN = { '化禄型':'Fortune type','化权型':'Power type','化科型':'Prestige type','化忌型':'Fixation type' }[sihuaType] || sihuaType;
+        // 英文四化映射：化禄→Lu/Power/Prestige/Fixation（非固定词组，用具体星曜名+星曜英文）
+        var _sihuaEN = { '化禄型':'Lu-type','化权型':'Power-type','化科型':'Prestige-type','化忌型':'Fixation-type' }[sihuaType] || sihuaType;
+        // 英文三元化（命宫宫干飞化的三个具体化星），从 sihuaProfile 取
+        var _sihuaProfile = (cp && cp._sihuaProfile) || {};
+        var _siHua1EN = (_sihuaProfile && _sihuaProfile.luStar) ? ('Lu on ' + (window.MAIN_STARS_I18N && window.MAIN_STARS_I18N[_sihuaProfile.luStar] && window.MAIN_STARS_I18N[_sihuaProfile.luStar].en || _sihuaProfile.luStar)) : '';
+        var _siHua2EN = (_sihuaProfile && _sihuaProfile.quanStar) ? ('Power on ' + (window.MAIN_STARS_I18N && window.MAIN_STARS_I18N[_sihuaProfile.quanStar] && window.MAIN_STARS_I18N[_sihuaProfile.quanStar].en || _sihuaProfile.quanStar)) : '';
+        var _siHua3EN = (_sihuaProfile && _sihuaProfile.keStar) ? ('Prestige on ' + (window.MAIN_STARS_I18N && window.MAIN_STARS_I18N[_sihuaProfile.keStar] && window.MAIN_STARS_I18N[_sihuaProfile.keStar].en || _sihuaProfile.keStar)) : '';
+        // siHua1/2/3 英文版：命宫主星+具体化星曜（替换中文三元化的 [天机 化禄] 等）
+        var _siHua1EN_STR = _siHua1EN ? _siHua1EN : '';
+        var _siHua2EN_STR = _siHua2EN ? _siHua2EN : '';
+        var _siHua3EN_STR = _siHua3EN ? _siHua3EN : '';
+        // 英文三元化用 _siHuaXEN_STR（有值时注入，空字符串时不显示）
+        if (_siHua1EN) siHua1 = _siHua1EN;
+        if (_siHua2EN) siHua2 = _siHua2EN;
+        if (_siHua3EN) siHua3 = _siHua3EN;
         // patternName 翻译（英文模式下不能用中文名）
         var _PATTERN_NAME_EN = {
             '杀破狼':'Sha-Po-Lang', '紫府廉武相':'Zi-Fu-Lian-Wu-Xiang', '机月同梁':'Ji-Yue-Tong-Liang', '巨日':'Ju-Ri',
