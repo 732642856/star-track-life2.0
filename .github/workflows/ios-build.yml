@@ -1,4 +1,4 @@
-name: Build iOS Release
+name: iOS Build & Upload to App Store
 
 on:
   workflow_dispatch:  # 手动触发
@@ -9,157 +9,179 @@ on:
         default: '1.0.0'
 
 jobs:
-  build:
-    name: Build iOS IPA
-    runs-on: macos-15  # GitHub 提供的 macOS runner，自带 Xcode
+  build-and-deploy:
+    runs-on: macos-15  # Xcode 16 环境
     timeout-minutes: 60
 
     steps:
-      # ===== 1. 拉取代码 =====
-      - name: Checkout repository
+      - name: 检出代码
         uses: actions/checkout@v4
 
-      # ===== 2. 安装 Node.js =====
-      - name: Setup Node.js
+      - name: 安装 Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      # ===== 3. 安装依赖 =====
-      - name: Install npm dependencies
+      - name: 安装依赖
         run: npm install
 
-      # ===== 4. 同步 Capacitor iOS 项目 =====
-      - name: Sync Capacitor iOS
+      - name: 同步 Capacitor
         run: npx cap sync ios
 
-      # ===== 5. 导入签名证书 =====
-      - name: Import Distribution Certificate
+      - name: 检查 iOS 项目结构
+        run: |
+          echo "=== iOS 目录结构 ==="
+          ls -la ios/App/
+          echo "=== xcworkspace ==="
+          WORKSPACE=$(find ios -name "*.xcworkspace" -not -path "*/xcodeproj/*" 2>/dev/null | head -1)
+          if [ -n "$WORKSPACE" ]; then
+            echo "找到 workspace: $WORKSPACE"
+          else
+            echo "无独立 workspace，使用 xcodeproj"
+          fi
+          echo "=== xcodeproj ==="
+          ls -la ios/App/App.xcodeproj/
+
+      - name: 解析 Swift Package 依赖
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -onlyUsePackageVersionsFromResolvedFile
+          echo "依赖解析完成"
+
+      - name: 导入签名证书
         env:
-          P12_BASE64: ${{ secrets.P12_BASE64 }}
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
           P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
-          # 将 base64 编码的 .p12 文件解码
-          echo "$P12_BASE64" | base64 --decode > /tmp/distribution.p12
-          
-          # 创建临时 keychain 用于导入证书
-          security create-keychain -p "$P12_PASSWORD" build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p "$P12_PASSWORD" build.keychain
-          
-          # 导入证书到 keychain
-          security import /tmp/distribution.p12 \
-            -k build.keychain \
-            -P "$P12_PASSWORD" \
-            -T /usr/bin/codesign
-          
-          # 设置分区列表，允许 codesign 使用私钥
-          security set-key-partition-list \
-            -S apple-tool:,apple: \
-            -s -k "$P12_PASSWORD" build.keychain
-          
-          # 清理临时文件
-          rm /tmp/distribution.p12
-          
-          echo "✅ 证书导入成功"
+          # 创建临时 keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
-      # ===== 6. 导入 Provisioning Profile =====
-      - name: Install Provisioning Profile
-        env:
-          PROVISIONING_PROFILE_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
-        run: |
-          # 解码并安装 Provisioning Profile
+          # 导入证书
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          echo "$BUILD_CERTIFICATE_BASE64" | tr -d '\n' | base64 --decode > $CERTIFICATE_PATH
+          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          # 安装描述文件（使用 UUID 命名，Xcode 才能识别）
+          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+          echo "$BUILD_PROVISION_PROFILE_BASE64" | tr -d '\n' | base64 --decode > $PP_PATH
+
+          # 提取 UUID
+          PP_UUID=$(security cms -D -i $PP_PATH | plutil -extract UUID raw -)
+          echo "描述文件 UUID: $PP_UUID"
+
+          # 安装到用户目录
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          echo "$PROVISIONING_PROFILE_BASE64" | base64 --decode > \
-            ~/Library/MobileDevice/Provisioning\ Profiles/star-track-life.mobileprovision
-          
-          echo "✅ Provisioning Profile 安装成功"
+          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/${PP_UUID}.mobileprovision
+          chmod 644 ~/Library/MobileDevice/Provisioning\ Profiles/${PP_UUID}.mobileprovision
 
-      # ===== 7. 设置版本号（可选） =====
-      - name: Set Version Number
-        if: ${{ github.event.inputs.version != '' }}
-        working-directory: ios/App/App
+          # 同时安装到系统目录（某些 CI 环境需要）
+          sudo mkdir -p /Library/MobileDevice/Provisioning\ Profiles
+          sudo cp $PP_PATH /Library/MobileDevice/Provisioning\ Profiles/${PP_UUID}.mobileprovision
+          sudo chmod 644 /Library/MobileDevice/Provisioning\ Profiles/${PP_UUID}.mobileprovision
+
+          echo "已安装的描述文件（用户目录）:"
+          ls -la ~/Library/MobileDevice/Provisioning\ Profiles/
+          echo "已安装的描述文件（系统目录）:"
+          ls -la /Library/MobileDevice/Provisioning\ Profiles/ 2>/dev/null || echo "系统目录无权限"
+
+      - name: 验证签名环境
         run: |
-          /usr/libexec/PlistBuddy -c \
-            "Set :CFBundleShortVersionString ${{ github.event.inputs.version }}" \
-            Info.plist
+          echo "=== Keychain 中的证书 ==="
+          security find-identity -v -p codesigning
+          echo "=== 已安装的描述文件 ==="
+          ls ~/Library/MobileDevice/Provisioning\ Profiles/ 2>/dev/null || echo "目录不存在"
+
+      - name: 设置版本号
+        if: ${{ github.event.inputs.version != '' }}
+        run: |
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ github.event.inputs.version }}" ios/App/App/Info.plist
           echo "✅ 版本号设置为 ${{ github.event.inputs.version }}"
 
-      # ===== 8. 构建 .xcarchive =====
-      - name: Build Archive
-        working-directory: ios/App
-        env:
-          DEVELOPER_DIR: /Applications/Xcode_16.app/Contents/Developer
+      - name: 递增 Build Number
         run: |
-          # 先列出可用的 Xcode 版本
-          ls /Applications/ | grep Xcode
-          
+          BUILD_NUM=$((100 + $GITHUB_RUN_NUMBER))
+          echo "设置 Build Number: $BUILD_NUM"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUM" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" ios/App/App/Info.plist
+
+      - name: 构建并归档
+        run: |
+          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+          PP_UUID=$(security cms -D -i $PP_PATH | plutil -extract UUID raw -)
+          PP_TEAM_ID=$(security cms -D -i $PP_PATH | plutil -extract TeamIdentifier.0 raw -)
+          echo "使用描述文件 UUID: $PP_UUID"
+          echo "描述文件 Team ID: $PP_TEAM_ID"
+
           xcodebuild archive \
-            -workspace App.xcworkspace \
+            -project ios/App/App.xcodeproj \
             -scheme App \
             -configuration Release \
-            -archivePath ./build/App.xcarchive \
+            -archivePath $RUNNER_TEMP/App.xcarchive \
             -destination 'generic/platform=iOS' \
-            -allowProvisioningUpdates \
+            DEVELOPMENT_TEAM="$PP_TEAM_ID" \
             CODE_SIGN_STYLE=Manual \
-            PROVISIONING_PROFILE_SPECIFIER="" \
-            DEVELOPMENT_TEAM="" \
-            | xcpretty --color && exit ${PIPESTATUS[0]}
-          
-          echo "✅ Archive 构建成功"
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE="$PP_UUID" \
+            -allowProvisioningUpdates
 
-      # ===== 9. 导出 IPA =====
-      - name: Export IPA
-        working-directory: ios/App
+      - name: 导出 IPA
         run: |
-          # 创建导出选项 plist
-          cat > ExportOptions.plist << EOF
+          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+          PP_UUID=$(security cms -D -i $PP_PATH | plutil -extract UUID raw -)
+          PP_TEAM_ID=$(security cms -D -i $PP_PATH | plutil -extract TeamIdentifier.0 raw -)
+          echo "导出用 UUID: $PP_UUID, Team: $PP_TEAM_ID"
+
+          cat > $RUNNER_TEMP/ExportOptions.plist << EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
-              <key>method</key>
-              <string>app-store</string>
-              <key>teamID</key>
-              <string>${{ secrets.TEAM_ID }}</string>
-              <key>uploadBitcode</key>
-              <false/>
-              <key>uploadSymbols</key>
-              <true/>
+            <key>method</key>
+            <string>app-store</string>
+            <key>teamID</key>
+            <string>$PP_TEAM_ID</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>signingCertificate</key>
+            <string>Apple Distribution</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.yinan.xinggui0</key>
+              <string>$PP_UUID</string>
+            </dict>
+            <key>uploadBitcode</key>
+            <false/>
+            <key>compileBitcode</key>
+            <false/>
           </dict>
           </plist>
           EOF
-          
-          xcodebuild -exportArchive \
-            -archivePath ./build/App.xcarchive \
-            -exportOptionsPlist ExportOptions.plist \
-            -exportPath ./build/ipa \
-            | xcpretty --color && exit ${PIPESTATUS[0]}
-          
-          echo "✅ IPA 导出成功"
-          
-          # 显示 IPA 文件信息
-          ls -lh ./build/ipa/
 
-      # ===== 10. 上传 IPA 为 Artifact（方便下载） =====
-      - name: Upload IPA Artifact
+          xcodebuild -exportArchive \
+            -archivePath $RUNNER_TEMP/App.xcarchive \
+            -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
+            -exportPath $RUNNER_TEMP/export
+
+      - name: 保存 IPA 为 Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: StarTrackLife-IPA
-          path: ios/App/build/ipa/*.ipa
+          name: App-${{ github.run_number }}.ipa
+          path: ${{ runner.temp }}/export/*.ipa
           retention-days: 30
 
-      # ===== 11. （可选）直接上传到 App Store Connect =====
-      - name: Upload to App Store Connect
-        if: ${{ secrets.APPLE_ID != '' }}
-        working-directory: ios/App
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APP_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
+      - name: 提示手动上传
         run: |
-          xcrun altool --upload-app \
-            --type ios \
-            --file ./build/ipa/*.ipa \
-            --username "$APPLE_ID" \
-            --password "$APP_SPECIFIC_PASSWORD" \
-            || echo "⚠️ App Store 上传失败，请手动通过 Transporter 上传 IPA"
+          echo "✅ IPA 已保存为 Artifact，请下载后用 Transporter 手动上传到 App Store Connect"
+          echo "下载地址：GitHub Actions → 本次 Run → Artifacts"
+
+      - name: 清理 Keychain
+        if: always()
+        run: security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true
