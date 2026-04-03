@@ -8,3 +8,15 @@ ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/
 *.p8
 *.p12
 *.mobileprovision
+
+# 阻止构建产物和系统文件进入仓库
+node_modules/
+dist/
+*.blockmap
+*.zip
+.DS_Store
+*.p8
+*.p12
+*.mobileprovision
+.env
+*.log
