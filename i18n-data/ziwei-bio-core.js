@@ -1457,7 +1457,7 @@ function _getCurrentTimeGanzhi() {
     var di   = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
     // 流年天干：以2024甲辰年为基准，offset
     var yearGan  = tian[(now.getFullYear() - 2024 + 40) % 10];
-    var yearZhi  = di[(now.getFullYear()  - 2024 + 48) % 12];
+    var yearZhi  = di[(now.getFullYear()  - 2024 + 16) % 12];
     // 流月地支：1月=寅
     var monthZhi = di[(now.getMonth() + 2) % 12];
     // 流日地支：以日期数字 mod 12
