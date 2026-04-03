@@ -4313,7 +4313,7 @@ function generateZiweiCharacterBio(userData, chart, attributes, sihuaType) {
     bio += `*${T.quotesNote}*\n\n`;
     var quotes = _generateCharacterQuotes(mainStar, sihuaType, patternType, pronoun, eraRaw, name, _lang);
     quotes.forEach(function(q, qi) {
-        bio += `> **${qi+1}.** ${q}\n>\n`;
+        bio += `> **${qi+1}.** ${q}\n`;
     });
     bio += '\n';
 
