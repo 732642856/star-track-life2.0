@@ -3650,6 +3650,11 @@ function generateZiweiCharacterBio(userData, chart, attributes, sihuaType) {
     if (!attributes) attributes = {};
     if (!sihuaType) sihuaType = '化禄型';
 
+    // ── 防止 chart.name 是对象导致 [object Object] 渗入英文小传 ──
+    if (chart && typeof chart.name !== 'string') {
+        chart.name = String(chart.type || chart.patternType || chart.patternName || '');
+    }
+
     // ── 三语言标签字典（所有硬编码字符串从此处取）──
     // 首先从window对象获取当前语言，如果不存在则使用默认值
     var _lang = (typeof window !== 'undefined' && window.CURRENT_LANG) || 
