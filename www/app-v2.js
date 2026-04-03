@@ -689,46 +689,46 @@ function confirmSubPattern() {
     showStep(4);
 }
 
-// ==================== 辅助函数：获取兜底选项 ====================
+// ── 三语言八属性选项（全局常量，初始化时创建一次）─────────────
+// 对照原则：同一索引位 = 同一含义，8维度 × 6选项 × 3语言严格同步
+var FALLBACK_OPTIONS = {
+    zh: {
+        appearance: ['威严霸气', '温和儒雅', '锐利干练', '柔和亲和', '独特个性', '普通平凡'],
+        speech:     ['简洁有力', '温和委婉', '热情洋溢', '沉稳冷静', '幽默风趣', '寡言少语'],
+        behavior:   ['雷厉风行', '深思熟虑', '随性而为', '谨慎小心', '有条不紊', '自由散漫'],
+        emotion:    ['外露直白', '内敛含蓄', '丰富多变', '稳定平和', '理性克制', '感性冲动'],
+        social:     ['主动热情', '被动等待', '理性交往', '感性相交', '圆滑世故', '直率真诚'],
+        crisis:     ['冷静分析', '果断行动', '寻求帮助', '逃避回避', '慌乱无措', '坚定抵抗'],
+        learning:   ['快速学习', '稳步积累', '依赖经验', '善于应变', '固执己见', '灵活调整'],
+        growth:     ['追求成就', '追求自由', '追求安稳', '追求真理', '追求情感', '追求平衡']
+    },
+    'zh-TW': {
+        appearance: ['威嚴霸氣', '溫和儒雅', '銳利幹練', '柔和親和', '獨特個性', '普通平凡'],
+        speech:     ['簡潔有力', '溫和委婉', '熱情洋溢', '沉穩冷靜', '幽默風趣', '寡言少語'],
+        behavior:   ['雷厲風行', '深思熟慮', '隨性而為', '謹慎小心', '有條不紊', '自由散漫'],
+        emotion:    ['外露直白', '內斂含蓄', '豐富多變', '穩定平和', '理性克制', '感性衝動'],
+        social:     ['主動熱情', '被動等待', '理性交往', '感性相交', '圓滑世故', '直率真誠'],
+        crisis:     ['冷靜分析', '果斷行動', '尋求幫助', '逃避回避', '慌亂無措', '堅定抵抗'],
+        learning:   ['快速學習', '穩步積累', '依賴經驗', '善於應變', '固執己見', '靈活調整'],
+        growth:     ['追求成就', '追求自由', '追求安穩', '追求真理', '追求情感', '追求平衡']
+    },
+    en: {
+        appearance: ['Commanding', 'Gentle', 'Sharp', 'Warm', 'Distinctive', 'Ordinary'],
+        speech:     ['Concise', 'Tactful', 'Enthusiastic', 'Calm', 'Humorous', 'Reserved'],
+        behavior:   ['Decisive', 'Thoughtful', 'Spontaneous', 'Cautious', 'Methodical', 'Free-spirited'],
+        emotion:    ['Expressive', 'Reserved', 'Changeable', 'Stable', 'Controlled', 'Impulsive'],
+        social:     ['Proactive', 'Passive', 'Rational', 'Emotional', 'Diplomatic', 'Frank'],
+        crisis:     ['Calm', 'Decisive', 'Seeking Help', 'Avoidant', 'Panics', 'Resolute'],
+        learning:   ['Fast', 'Steady', 'Experiential', 'Adaptable', 'Stubborn', 'Flexible'],
+        growth:     ['Achievement', 'Freedom', 'Stability', 'Truth', 'Connection', 'Balance']
+    }
+};
+
 function getFallbackOptions(attrId) {
-    const lang = (typeof CURRENT_LANG !== 'undefined' ? CURRENT_LANG : 'zh');
-    
-    // 三语言兜底选项
-    const FALLBACK_OPTIONS = {
-        zh: {
-            appearance: ['威严霸气', '温和儒雅', '锐利干练', '柔和亲和', '独特个性', '普通平凡'],
-            speech: ['简洁有力', '温和委婉', '热情洋溢', '沉稳冷静', '幽默风趣', '寡言少语'],
-            behavior: ['雷厉风行', '深思熟虑', '随性而为', '谨慎小心', '有条不紊', '自由散漫'],
-            emotion: ['外露直白', '内敛含蓄', '丰富多变', '稳定平和', '理性克制', '感性冲动'],
-            social: ['主动热情', '被动等待', '理性交往', '感性相交', '圆滑世故', '直率真诚'],
-            crisis: ['冷静分析', '果断行动', '寻求帮助', '逃避回避', '慌乱无措', '坚定抵抗'],
-            learning: ['快速学习', '稳步积累', '依赖经验', '善于应变', '固执己见', '灵活调整'],
-            growth: ['追求成功', '追求自由', '追求安稳', '追求真理', '追求情感', '追求平衡']
-        },
-        'zh-TW': {
-            appearance: ['威嚴霸氣', '溫和儒雅', '銳利幹練', '柔和親和', '獨特個性', '普通平凡'],
-            speech: ['簡潔有力', '溫和委婉', '熱情洋溢', '沉穩冷靜', '幽默風趣', '寡言少語'],
-            behavior: ['雷厲風行', '深思熟慮', '隨性而為', '謹慎小心', '有條不紊', '自由散漫'],
-            emotion: ['外露直白', '內斂含蓄', '豐富多變', '穩定平和', '理性克制', '感性衝動'],
-            social: ['主動熱情', '被動等待', '理性交往', '感性相交', '圓滑世故', '直率真誠'],
-            crisis: ['冷靜分析', '果斷行動', '尋求幫助', '逃避回避', '慌亂無措', '堅定抵抗'],
-            learning: ['快速學習', '穩步積累', '依賴經驗', '善於應變', '固執己見', '靈活調整'],
-            growth: ['追求成功', '追求自由', '追求安穩', '追求真理', '追求情感', '追求平衡']
-        },
-        en: {
-            appearance: ['Commanding', 'Gentle & Refined', 'Sharp & Capable', 'Warm & Approachable', 'Distinctive', 'Ordinary'],
-            speech: ['Direct & Concise', 'Tactful & Soft', 'Enthusiastic', 'Calm & Measured', 'Humorous', 'Reserved'],
-            behavior: ['Decisive', 'Thoughtful', 'Spontaneous', 'Cautious', 'Methodical', 'Unstructured'],
-            emotion: ['Openly Expressive', 'Reserved', 'Changeable', 'Stable', 'Rationally Controlled', 'Impulsive'],
-            social: ['Proactive', 'Passive', 'Rational', 'Emotionally Guided', 'Diplomatic', 'Frank'],
-            crisis: ['Calm Analysis', 'Swift Action', 'Seeks Help', 'Avoidance', 'Panics', 'Firm Resistance'],
-            learning: ['Fast Learner', 'Steady Accumulator', 'Experience-reliant', 'Adaptable', 'Stubborn', 'Flexible'],
-            growth: ['Achievement', 'Freedom', 'Stability', 'Truth', 'Connection', 'Balance']
-        }
-    };
-    
-    const langOptions = FALLBACK_OPTIONS[lang] || FALLBACK_OPTIONS.zh;
-    return langOptions[attrId] || langOptions.appearance;
+    var lang = (typeof CURRENT_LANG !== 'undefined' ? CURRENT_LANG :
+                (typeof window !== 'undefined' && typeof window.CURRENT_LANG !== 'undefined' ? window.CURRENT_LANG : 'zh'));
+    var opts = FALLBACK_OPTIONS[lang] || FALLBACK_OPTIONS.zh;
+    return opts[attrId] || opts.appearance;
 }
 
 // ==================== 步骤4: 8属性细化 ====================
