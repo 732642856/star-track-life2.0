@@ -354,13 +354,13 @@
             });
 
             // 首次进入：splash 播完后显示语言选择
-            // 再次进入：直接显示语言选择（跳过 splash）
+            // 再次进入：直接进入主界面（跳过语言选择）
             var hasPicked = localStorage.getItem(LANG_PICKED_KEY);
             if (hasPicked) {
-                // 再次进入 → 直接弹出语言选择（无需 splash）
+                // 再次进入 → 直接进入主界面（无需语言选择）
                 langPicker.style.display = 'none';
                 runSplash(function() {
-                    showLangPicker();
+                    // 直接进入，不显示语言选择
                 });
             } else {
                 // 首次进入 → splash 播完后弹出语言选择
