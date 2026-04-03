@@ -801,40 +801,40 @@ function initEightAttributes() {
         console.warn('[initEightAttributes] 词库生成出错:', e);
     }
     
-    // 合并动态词库和i18n数据
+    // ── 构建 Step 4 选项列表 ────────────────────────────────
+    // 核心原则：Step 4 用户选词 → 四字短词（FALLBACK_OPTIONS），有区分度易选择
+    //             Step 5 输出用 → RichZiweiWordLibrary（50条长词+三层修饰，专业输出）
+    // 优先级：FALLBACK_OPTIONS（四字短词）> i18n数据 > 硬编码兜底
     const attributes = attributeDefs.map(attr => {
-        let options = [];
-        
-        // ★ 新逻辑：简体中文使用动态词库，其他语言直接用i18n数据
         const currentLang = (typeof CURRENT_LANG !== 'undefined') ? CURRENT_LANG : 'zh';
-        
-        // 1. 简体中文：优先使用动态词库
-        if (currentLang === 'zh' && dynamicOptions[attr.id] && dynamicOptions[attr.id].length > 0) {
-            options = dynamicOptions[attr.id];
+
+        // 1. 简体中文/繁体/英文：统一用 FALLBACK_OPTIONS 四字词（6条，区分度好）
+        const fallbackOpts = getFallbackOptions(attr.id);
+        if (fallbackOpts && fallbackOpts.length > 0) {
+            return {
+                id: attr.id,
+                name: attr.name,
+                options: fallbackOpts.slice(0, 6)
+            };
         }
-        // 2. 其他语言（繁体/英文）：直接使用i18n数据
-        else if (dyn && dyn.attr) {
+
+        // 2. i18n 数据兜底
+        if (dyn && dyn.attr) {
             const dynAttr = dyn.attr.find(a => a.id === attr.id);
-            if (dynAttr && dynAttr.options) {
-                options = dynAttr.options;
+            if (dynAttr && dynAttr.options && dynAttr.options.length > 0) {
+                return {
+                    id: attr.id,
+                    name: attr.name,
+                    options: dynAttr.options.slice(0, 6)
+                };
             }
         }
-        // 3. 兜底：简体中文也用i18n，最后用硬编码
-        if (options.length === 0 && dyn && dyn.attr) {
-            const dynAttr = dyn.attr.find(a => a.id === attr.id);
-            if (dynAttr && dynAttr.options) {
-                options = dynAttr.options;
-            }
-        }
-        // 4. 硬编码（最后兜底）
-        if (options.length === 0) {
-            options = getFallbackOptions(attr.id);
-        }
-        
+
+        // 3. 硬编码（最后防线）
         return {
             id: attr.id,
             name: attr.name,
-            options: options.slice(0, 6) // 最多显示6个选项
+            options: []
         };
     });
 
